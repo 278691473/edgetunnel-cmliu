@@ -1,0 +1,35 @@
+name: Sync upstream cmliu/edgetunnel
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 每天 02:00 UTC (北京时间 10:00) 检查上游更新
+  workflow_dispatch:        # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/cmliu/edgetunnel.git
+          git fetch upstream main
+
+      - name: Merge upstream if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 无变化则跳过
+          if git diff --quiet HEAD upstream/main; then
+            echo "Already up to date."
+            exit 0
+          fi
+          # 用上游内容覆盖(保持与上游一致)
+          git checkout upstream/main -- .
+          git add -A
+          git commit -m "sync: upstream cmliu/edgetunnel $(date +'%Y-%m-%d')" || echo "nothing to commit"
+          git push origin main
